@@ -27,7 +27,8 @@ volatile unsigned char* pin_b  = (unsigned char*) 0x23;
 volatile unsigned char* port_k = (unsigned char*) 0x108; 
 volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
 volatile unsigned char* pin_k  = (unsigned char*) 0x106;
-//Defining Threshold values 
+
+//Defining values 
 float tempThreshold = 75.00; 
 int waterThreshold = 300;
 int waterLevel;  
@@ -39,6 +40,7 @@ int waterLevel;
 //Blue LED on = *port_b |= 0b00010000;
 //Reset LEDs = *port_b &= 0b00001110;
 
+//setup for the operation 
 void setup() { 
   *ddr_b |= 0b11110001;
   *ddr_k &= 0b11111000;
@@ -61,6 +63,7 @@ void loop() {
     idleState();
   }  
 }
+//Function of Disable State
 void disableState(){
   lcd.clear();   
   *port_b &= 0b00001110;
@@ -76,12 +79,12 @@ void disableState(){
   }
   stepper.step(250);
 } 
- 
+//Function of Idle State
 void idleState(){
   *port_b &= 0b00001110;
   *port_b |= 0b00100000;
   waterLevel = analogRead(A7);
-
+  //Using the temperature and humidty sensor to get and print temperature and humidity percentage 
   lcd.begin(16, 2);
   lcd.setCursor(7,1);
   dht.begin();
@@ -113,6 +116,7 @@ void idleState(){
     Serial.println(rtc.second());
     runningState();
   }
+ //State to change to error state 
   if(waterLevel <= waterThreshold){
     Serial.print("Time Switched to Error: ");
     Serial.print(rtc.hour());
@@ -122,7 +126,7 @@ void idleState(){
     Serial.println(rtc.second());
     errorState();
   }
-  //Stop Button 
+  //Stop Button to stop operation 
   if((*pin_k & 0b00000001) == 1){
     Serial.print("Time Switched to Disable: ");
     Serial.print(rtc.hour());
@@ -133,8 +137,9 @@ void idleState(){
     disableState(); 
   } 
 }
+//Function of Error State
 void errorState(){
-  //lcd.clear();
+  //Lighting up LED and writing Error message on LCD
   lcd.begin(16, 2);
   *port_b &= 0b00001110;
   *port_b |= 0b10000000;
@@ -142,7 +147,7 @@ void errorState(){
   lcd.print("Water Level is");
   lcd.setCursor(4,1);
   lcd.print("too low");
-  //Stop Button 
+  //Stop Button to go back to Disable State 
   if((*pin_k & 0b00000001) == 1){
     Serial.print("Time Switched to Disable: ");
     Serial.print(rtc.hour());
@@ -152,7 +157,7 @@ void errorState(){
     Serial.println(rtc.second());
     disableState(); 
   }
-  //Reset Button 
+  //Reset Button to go back to Idle State
   if((*pin_k & 0b00000010) == 2){
     Serial.print("Time Switched to Idle: ");
     Serial.print(rtc.hour());
@@ -163,12 +168,14 @@ void errorState(){
     idleState(); 
   } 
 }
+////Function of Running State
 void runningState(){
+  //Lighting up Blue LED and Starting Fan 
   *port_b &= 0b00001110;
   *port_b |= 0b00010001;
   waterLevel = analogRead(A7);
   stepper.step(250);
-  
+  //Using the temperature and humidty sensor to get and print temperature and humidity percentage 
   lcd.begin(16, 2);
   dht.begin();
   
@@ -187,6 +194,7 @@ void runningState(){
   lcd.print(humidty);
   lcd.setCursor(12,1);
   lcd.print("%");
+ //Going back to Idle State 
   if(temperature <= tempThreshold){
     Serial.print("Time Switched to Idle: ");
     Serial.print(rtc.hour());
@@ -196,6 +204,7 @@ void runningState(){
     Serial.println(rtc.second());
     idleState(); 
   }
+ //Going to Error State 
   if(waterLevel < waterThreshold){
     Serial.print("Time Switched to Error: ");
     Serial.print(rtc.hour());
@@ -205,7 +214,7 @@ void runningState(){
     Serial.println(rtc.second());
     errorState(); 
   }
-  //Stop Button 
+  //Stop Button to go back to Disable State 
   if((*pin_k & 0b00000001) == 1){
     Serial.print("Time Switched to Disable: ");
     Serial.print(rtc.hour());
